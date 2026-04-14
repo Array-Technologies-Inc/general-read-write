@@ -43,6 +43,8 @@ class Client:
         self.id = id
         self.name = name
         self.snc = snc
+        self.read_dict = read_dict
+        self.write_dict = write_dict
         self.gateway_ip = gateway_ip
         self.port = port
         self.client = None
@@ -61,6 +63,8 @@ class Client:
         self.cs_sent = 0
         self.apto = False
         self.bootloaded = False
+        self.read = False
+        self.written = False
         self.finished = False
         self.aborted = False
         self.read_errors = 0
@@ -106,7 +110,7 @@ class Client:
                 )
             )
 
-    def read_register(self, address: str, count: int, unit: int) -> str:
+    def read_register(self, address: int, count: int, unit: int) -> str:
         if not self.client or not self.client.is_socket_open():
             self.connect()
         attempt = 0
@@ -127,7 +131,7 @@ class Client:
             )
         return response
 
-    def write_register_16bit(self, address: str, value: int, unit: int) -> str:
+    def write_register_16bit(self, address: int, value: int, unit: int) -> str:
         if not self.client or not self.client.is_socket_open():
             self.connect()
         byte_order = Endian.Big
@@ -291,6 +295,18 @@ class Client:
     def set_bootloaded(self, bootloaded: bool) -> None:
         self.bootloaded = bootloaded
 
+    def get_read(self) -> bool:
+        return self.read
+
+    def set_read(self, read: bool) -> None:
+        self.read = read
+
+    def get_written(self) -> bool:
+        return self.written
+
+    def set_written(self, written: bool) -> None:
+        self.written = written
+
     def get_finished(self) -> bool:
         return self.finished
 
@@ -345,8 +361,8 @@ class Client:
     def set_interation(self, iteration: int) -> None:
         self.iteration = iteration
 
-    def add_interation(self, interation: int) -> None:
-        self.iteration += interation
+    def add_interation(self, iteration: int) -> None:
+        self.iteration += iteration
 
     def set_mac(self, mac: str) -> None:
         self.mac = mac

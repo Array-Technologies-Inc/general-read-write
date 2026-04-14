@@ -112,9 +112,11 @@ def read_config_map():
                     try:
                         for col in devices_config.columns:
                             if "Read_" in col:
-                                device_table.read_requests[col] = devices_config[col].replace("Read_", "")
+                                device_table.read_requests[col] = devices_config[col]
+                                print(f" · Read register {col.replace("Read_", "")}")
                             if "Write_" in col:
-                                device_table.write_requests[col] = devices_config[col].replace("Write_", "")
+                                device_table.write_requests[col] = devices_config[col]
+                                print(f" · Write register {col.replace("Write_", "")}")
 
                         if not device_table.read_requests and not device_table.write_requests:
                             print(f"There is no read/write requests")
@@ -175,7 +177,21 @@ def create_gateways(config, device_table, tsc_frm_index, tsc_frm_list, iwc_frm_i
         if iwc_frm_list is not None and iwc_frm_index is not None:
             gateway_dict[gw_ip].add_new_iwc_version(iwc_frm_list[iwc_frm_index])
 
-    for name, id, gw_ip, snc, type, read_req, write_req, product_id_init, product_id_sent, product_id_end, connected, percentage, checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date, duration in zip(device_table.name, device_table.id, device_table.gw, device_table.snc, device_table.type, device_table.read_requests, device_table.write_requests, device_table.product_id_init, device_table.product_id_sent, device_table.product_id_end, device_table.connected, device_table.percentage, device_table.checksum_sent, device_table.checksum_recv, device_table.bootloader, device_table.ended, device_table.read_errors, device_table.send_errors, device_table.tsc_local_date, device_table.tsc_utc_date, device_table.duration):
+    for i, (name, id, gw_ip, snc, type, product_id_init, product_id_sent, product_id_end, connected, percentage,
+         checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date,
+         duration) in \
+        enumerate(
+            zip(device_table.name, device_table.id, device_table.gw, device_table.snc, device_table.type,
+                device_table.product_id_init, device_table.product_id_sent, device_table.product_id_end,
+                device_table.connected, device_table.percentage, device_table.checksum_sent, device_table.checksum_recv,
+                device_table.bootloader, device_table.ended, device_table.read_errors, device_table.send_errors,
+                device_table.tsc_local_date, device_table.tsc_utc_date, device_table.duration)):
+        read_req = {}
+        write_req = {}
+        for reg, value in device_table.read_requests.items():
+            read_req[reg] = value[i]
+        for reg, value in device_table.write_requests.items():
+            write_req[reg] = value[i]
         if type == 'Controller':
             gateway_dict[gw_ip].add_tsc(name, id, snc, read_req, write_req, product_id_init, product_id_sent, product_id_end, connected, percentage, checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date, duration)
         elif type == 'Meteo':

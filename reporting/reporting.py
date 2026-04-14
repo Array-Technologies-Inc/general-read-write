@@ -105,6 +105,11 @@ class Reporting:
 
                 for device in list(gw.get_tsc_list().values()) + list(gw.get_iwc_list().values()):
                     try:
+                        for read_req, value in device.read_dict.items():
+                            device_file_table.loc[device_file_table["TCU"] == device.name, read_req] = value if value else ''
+                        for write_req, value in device.write_dict.items():
+                            device_file_table.loc[device_file_table["TCU"] == device.name, write_req] = value if value else ''
+                        '''
                         if "ProductId Init" not in device_file_table:
                             device_file_table["ProductId Init"] = '0'
                         if "ProductId End" not in device_file_table:
@@ -125,6 +130,7 @@ class Reporting:
                         device_file_table.loc[device_file_table["TCU"] == device.name, "TSC local date"] = device.get_local_date() if device.get_local_date() else "---"
                         device_file_table.loc[device_file_table["TCU"] == device.name, "TSC UTC date"] = device.get_local_date_utc() if device.get_local_date_utc() else "---"
                         device_file_table.loc[device_file_table["TCU"] == device.name, "Duration"] = device.get_duration() if device.get_local_date_utc() else "---"
+                        '''
                     except Exception as e:
                         print(f"Error updating device table: {e}")
 
