@@ -52,32 +52,15 @@ class Client:
         self.timeout = timeout
         self.error_attempt_count = 5
         self.error_attempt_time_ms = 10
-        self.prod_id_init = "0"
-        self.prod_id_sent = "0"
-        self.prod_id_end = "0"
-        self.comm_status = False
-        self.start = False
-        self.percent = 0
-        self.full = False
-        self.cs_received = 0
-        self.cs_sent = 0
-        self.apto = False
-        self.bootloaded = False
         self.read = False
         self.written = False
         self.finished = False
         self.aborted = False
-        self.read_errors = 0
-        self.send_errors = 0
-        self.local_date = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-        self.local_date_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y - %H:%M:%S")
-        self.duration = timedelta()
         self.iteration = 0
-        self.mac = ""
 
         logging.config.fileConfig(
             os.path.join(common.CONFIG_DIR, "log.conf"), disable_existing_loggers=False)
-        self.log = logging.getLogger('fw_updater')
+        self.log = logging.getLogger('reader_writer')
 
     def connect(self) -> None:
 
@@ -190,62 +173,11 @@ class Client:
         if self.client:
             self.client.close()
 
-    def add_firmware_status(self, new_firmware_version, product_id_init, product_id_sent, product_id_end, connected, percentage, checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date, duration):
-        if int(new_firmware_version, 0) == int(product_id_sent, 0): # Si sigo enviando la misma version cojo los valores, los dejo a default
-            self.prod_id_sent = product_id_sent
-            self.prod_id_init = product_id_init
-            self.prod_id_end = product_id_end
-            if connected == 'Yes':
-                self.comm_status = True
-            else:
-                self.comm_status = False
-            self.percent = percentage
-            self.cs_sent = checksum_sent
-            self.cs_received = checksum_recv
-            if bootloader == 'Yes':
-                self.bootloaded = True
-            else:
-                self.bootloaded = False
-            if ended == 'Yes':
-                self.finished = True
-                self.percent = 100
-            else:
-                self.finished = False
-            self.read_errors = read_errors
-            self.send_errors = send_errors
-            self.local_date = tsc_local_date
-            self.local_date_utc = tsc_utc_date
-            try:
-                match = re.match(r"(?:(\d+) days? )?(\d+):(\d+):(\d+)", duration)
-                days = int(match.group(1)) if match.group(1) else 0
-                h, m, s = map(int, match.groups()[1:])
-                self.duration = timedelta(days=days, hours=h, minutes=m, seconds=s)
-            except Exception as e:
-                self.duration = duration
-
     def get_id(self) -> int:
         return self.id
 
     def get_gateway_ip(self) -> str:
         return self.gateway_ip
-
-    def get_prod_id_init(self) -> str:
-        return self.prod_id_init
-
-    def set_prod_id_init(self, prod_id_init: str) -> None:
-        self.prod_id_init = hex(prod_id_init)
-
-    def get_prod_id_sent(self) -> str:
-        return self.prod_id_sent
-
-    def set_prod_id_sent(self, prod_id_sent: str) -> None:
-        self.prod_id_sent = hex(prod_id_sent)
-
-    def get_prod_id_end(self) -> str:
-        return self.prod_id_end
-
-    def set_prod_id_end(self, prod_id_end: str) -> None:
-        self.prod_id_end = hex(prod_id_end)
 
     def get_comm_status(self) -> bool:
         return self.comm_status
@@ -253,47 +185,11 @@ class Client:
     def set_comm_status(self, comm_status: bool) -> None:
         self.comm_status = comm_status
 
-    def get_start(self) -> bool:
-        return self.start
-
-    def set_start(self, start: bool) -> None:
-        self.start = start
-
-    def get_percent(self) -> float:
-        return self.percent
-
-    def set_percent(self, percent: float) -> None:
-        self.percent = percent
-
     def get_full(self) -> bool:
         return self.full
 
     def set_full(self, full: bool) -> None:
         self.full = full
-
-    def get_cs_received(self) -> int:
-        return self.cs_received
-
-    def set_cs_received(self, cs_received: int) -> None:
-        self.cs_received = cs_received
-
-    def get_cs_sent(self) -> int:
-        return self.cs_sent
-
-    def set_cs_sent(self, cs_sent: int) -> None:
-        self.cs_sent = cs_sent
-
-    def get_apto(self) -> bool:
-        return self.apto
-
-    def set_apto(self, apto: bool) -> None:
-        self.apto = apto
-
-    def get_bootloaded(self) -> bool:
-        return self.bootloaded
-
-    def set_bootloaded(self, bootloaded: bool) -> None:
-        self.bootloaded = bootloaded
 
     def get_read(self) -> bool:
         return self.read
@@ -319,42 +215,6 @@ class Client:
     def set_aborted(self, aborted: bool) -> None:
         self.aborted = aborted
 
-    def get_read_errors(self) -> int:
-        return self.read_errors
-
-    def set_read_errors(self, read_errors: int) -> None:
-        self.read_errors = read_errors
-
-    def get_sent_errors(self) -> int:
-        return self.send_errors
-
-    def set_sent_errors(self, sent_errors: int) -> None:
-        self.send_errors = sent_errors
-
-    def get_local_date(self) -> str:
-        return self.local_date
-
-    def set_local_date(self, local_date: str) -> None:
-        self.local_date = local_date
-
-    def get_local_date_utc(self) -> str:
-        return self.local_date_utc
-
-    def set_local_date_utc(self, local_date_utc: str) -> None:
-        self.local_date_utc = local_date_utc
-
-    def get_duration(self) -> int:
-        return self.duration
-
-    def set_duration(self, duration: timedelta) -> None:
-        self.duration = duration
-
-    def add_duration(self, duration: timedelta) -> None:
-        try:
-            self.duration += duration
-        except Exception as e:
-            self.duration = duration
-
     def get_iteration(self) -> int:
         return self.iteration
 
@@ -363,9 +223,3 @@ class Client:
 
     def add_iteration(self) -> None:
         self.iteration += 1
-
-    def set_mac(self, mac: str) -> None:
-        self.mac = mac
-
-    def get_mac(self) -> str:
-        return self.mac

@@ -16,7 +16,7 @@ from device.tsc import Tsc
 from datetime import datetime, timezone, timedelta
 
 logging.config.fileConfig(os.path.join(common.CONFIG_DIR, "log.conf"), disable_existing_loggers=False)  # noqa: E501
-log = logging.getLogger('fw_updater')
+log = logging.getLogger('reader_writer')
 
 
 class Gateway(Thread):
@@ -25,7 +25,7 @@ class Gateway(Thread):
         Thread.__init__(self)
         self.ip = ip
         self.config = config
-        self.port = config["init_FW"]["gw_port"]
+        self.port = config["init_RW"]["gw_port"]
         self.client = None
         self.timeout = 3
 
@@ -48,17 +48,10 @@ class Gateway(Thread):
         self.iwc_queue = Queue()
 
         self.threads = []
-        self.threads_per_gateway = int(config["init_FW"]["threads_per_gateway"])
-        self.max_iterations = int(config["init_FW"]["max_iterations"])
+        self.threads_per_gateway = int(config["init_RW"]["threads_per_gateway"])
         self.mac_file_updated = False
 
         self.process_finished = False
-
-    def set_mac_file_updated(self, mac_file_updated) -> bool:
-        self.mac_file_updated = mac_file_updated
-
-    def get_mac_file_updated(self) -> bool:
-        return self.mac_file_updated
 
     def get_ip(self) -> None:
         return self.ip
@@ -66,12 +59,8 @@ class Gateway(Thread):
     def get_port(self) -> None:
         return self.port
 
-    def add_tsc(self, tsc_name: str, tsc_id: int, tsc_snc: str, read_dict: dict, write_dict: dict,  product_id_init: str, product_id_sent: str, product_id_end: str, connected: str, percentage: float, checksum_sent: int, checksum_recv: int, bootloader: str, ended: str, read_errors: int, send_errors: int, tsc_local_date: datetime, tsc_utc_date: datetime, duration: timedelta) -> None:
+    def add_tsc(self, tsc_name: str, tsc_id: int, tsc_snc: str, read_dict: dict, write_dict: dict) -> None:
         tsc = Tsc(self.config, tsc_name, tsc_id, tsc_snc, read_dict, write_dict, self.ip, self.port)
-        try:
-            tsc.add_firmware_status(self.new_tsc_version['version'], product_id_init, product_id_sent, product_id_end, connected, percentage, checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date, duration)
-        except Exception as e:
-            pass
         self.tsc_list[tsc_id] = tsc
         self.tsc_queue.put(tsc)
         self.tsc_num = len(self.tsc_list)
@@ -97,15 +86,8 @@ class Gateway(Thread):
     def get_aborted_tsc(self) -> int:
         return self.tsc_aborted
 
-    def add_new_tcs_version(self, firmware: List[Dict[str, str]]) -> None:
-        self.new_tsc_version = firmware
-
-    def add_iwc(self, iwc_name: str, iwc_id: int, iwc_snc: str, product_id_init: str, product_id_sent: str, product_id_end: str, connected: str, percentage: float, checksum_sent: int, checksum_recv: int, bootloader: str, ended: str, read_errors: int, send_errors: int, tsc_local_date: datetime, tsc_utc_date: datetime, duration: timedelta) -> None:
-        iwc = Iwc(self.config, iwc_name, iwc_id, iwc_snc, self.ip, self.port)
-        try:
-            iwc.add_firmware_status(self.new_iwc_version['version'], product_id_init, product_id_sent, product_id_end, connected, percentage, checksum_sent, checksum_recv, bootloader, ended, read_errors, send_errors, tsc_local_date, tsc_utc_date, duration)
-        except Exception as e:
-            pass
+    def add_iwc(self, iwc_name: str, iwc_id: int, iwc_snc: str, read_dict: dict, write_dict: dict) -> None:
+        iwc = Iwc(self.config, iwc_name, iwc_id, iwc_snc, read_dict, write_dict, self.ip, self.port)
         self.iwc_list[iwc_id] = iwc
         self.iwc_queue.put(iwc)
         self.iwc_num = len(self.iwc_list)
@@ -136,9 +118,6 @@ class Gateway(Thread):
 
     def set_aborted_iwc(self, aborted_iwc: int) -> None:
         self.iwc_aborted = aborted_iwc
-
-    def add_new_iwc_version(self, firmware: List[Dict[str, str]]) -> None:
-        self.new_iwc_version = firmware
 
     def read_write_tsc(self, tsc_id: int) -> None:
         self.tsc_list[tsc_id].read_write_device()
@@ -200,6 +179,8 @@ class Gateway(Thread):
 
     def verify_tsc(self):
         self.tsc_full = 0
+        self.tsc_read = 0
+        self.tsc_written = 0
         self.tsc_aborted = 0
         for tsc in self.get_tsc_list():
             self.tsc_list[tsc].client = self.client
@@ -218,6 +199,8 @@ class Gateway(Thread):
 
     def verify_iwc(self):
         self.iwc_full = 0
+        self.iwc_read = 0
+        self.iwc_written = 0
         self.iwc_aborted = 0
         for iwc in self.get_iwc_list():
             self.iwc_list[iwc].client = self.client

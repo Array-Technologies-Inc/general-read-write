@@ -43,7 +43,7 @@ class Reporting:
         if num_devices > 0:
             percent_total = (full_devices * 100.0) / (num_devices)
 
-        report_header = "Summary Table\t ==> Read {full_devices}/{total_devices} = {percent_total:6.2f} % \tAborted: {aborted_devices:3}\n\n".format(  # noqa: E501
+        report_header = "Summary Table\t ==> Read&Written {full_devices}/{total_devices} = {percent_total:6.2f} % \tAborted: {aborted_devices:3}\n\n".format(  # noqa: E501
             full_devices=full_devices,
             total_devices=num_devices,
             percent_total=percent_total,
@@ -59,7 +59,7 @@ class Reporting:
                 gw_tsc_percent = (100 * gw.get_full_tsc()) / gw.get_tsc_num()
             if gw.get_iwc_num() != 0:
                 gw_iwc_percent = (100 * gw.get_full_iwc()) / gw.get_iwc_num()
-            report_gateway_resume = "GW {} ==> TSC W{:3}|R{:3} -> F{:3}/T{:3} = {:6.2f}%\t IWC W{:3}|R{:3} -> F{:3}/T{:3} = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
+            report_gateway_resume = "GW {} ==> TSC {:3}W|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t IWC {:3}W|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
                 gw.get_ip(),
                 gw.get_written_tsc(),
                 gw.get_read_tsc(),
@@ -81,13 +81,9 @@ class Reporting:
             report_file.write("End Time: {}\n".format(
                 self.end_time.strftime("%d/%m/%Y - %H:%M:%S")))
 
-        #report_file.write("\n")
-        #report_columns = "TSC/IWC\tProdIdInit.\tProdIdFin.\tGW\tConnect.\tInit.\tPercent\tFull\tCS_sent/recv\tApto.\tBoolL\tFin.\tReadErrors\tSendErrors\tTSCLocalDate\\Hour\tTSCUtcDate/Hour\t\tDuration\n"  # noqa: E501
-        #report_file.write(report_columns)
-
     def rotate_files(self):
         max_files = 6
-        list_of_files = glob.glob(os.path.join(common.LOG_DIR, "*_FW_updater.txt"))
+        list_of_files = glob.glob(os.path.join(common.LOG_DIR, "*_ReaderWriter.txt"))
         list_of_files.sort(key=os.path.getmtime)
 
         delete = len(list_of_files) - max_files
@@ -100,7 +96,7 @@ class Reporting:
 
         with open(os.path.join(
             common.LOG_DIR, self.start_time.strftime(
-                "%Y%m%d_%H%M") + "_" + self.id_snc + "_FW_updater.txt"), "w") as report:
+                "%Y%m%d_%H%M") + "_" + self.id_snc + "_ReaderWriter.txt"), "w") as report:
             self.write_header(report)
             report.close()
 
