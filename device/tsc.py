@@ -1,3 +1,5 @@
+from os import write
+import pandas as pd
 from time import sleep
 from typing import List, Tuple, Dict
 from datetime import datetime, timezone
@@ -33,11 +35,11 @@ class Tsc(Client):
             int(register), int(value), self.id)
         if result:
             self.log.info(
-                f"TSC{self.get_id()}: Register {register} was successfully set to {value}.")
+                f"TSC {self.get_id()}: Register {register} was successfully set to {value}.")
             return True
         else:
             self.log.info(
-                f"TSC{self.get_id()}: Register {register} was not set to {value}.")
+                f"TSC {self.get_id()}: Register {register} was not set to {value}.")
             return False
 
 
@@ -309,30 +311,18 @@ class Tsc(Client):
         self.set_firmware_enable_change(0)
         self.set_firmware_addr_esperada(0xFFFFF)
 
-    def upgrade_device(self, firmware: Dict[str, str]) -> None:
-        max_attempts = int(self.config["init_FW"]["max_attempts"])
-        max_equal_addr_attempts = int(self.config["init_FW"]["max_equal_addr_attempts"])
-        max_update_attempts = int(self.config["init_FW"]["max_update_attempts"])
+    def read_write_device(self) -> None:
         attempts_wait_time = int(self.config["init_FW"]["attempts_wait_time"])
-        equal_addr_attempts_wait_time = int(self.config["init_FW"]["equal_addr_attempts_wait_time"])
         max_iterations_per_device = int(self.config["init_FW"]["max_iterations_per_device"])
 
-        process_done = False
-        attempts = 0
-        update_attempts = 0
-        sent_errors = 0
-        if not self.start:
-            self.start = True
-            self.local_date = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-            self.local_date_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y - %H:%M:%S")
-        start = datetime.now()
         if not self.get_finished() and self.iteration < max_iterations_per_device:
             try:
                 self.connect()
+                self.add_iteration()
                 read = True
                 written = True
                 for read_key, value in self.read_dict.items():
-                    if not isinstance(value, int):
+                    if not isinstance(value, float) or pd.isna(value):
                         self.read_dict[read_key] = self.get_register(read_key.replace("Read_", ""))
                 self.set_read(read)
                 for write_key, value in self.write_dict.items():
@@ -343,7 +333,7 @@ class Tsc(Client):
                             written = False
                         self.set_written(written)
                     except Exception as e:
-                        self.log.debug(f"TSC{self.get_id()}: Cannot set register {write_key}={value}: {e}")
+                        self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
 
                 if written and read:
                     self.set_finished(True)
@@ -352,35 +342,26 @@ class Tsc(Client):
                             self.gateway_ip, self.id))
 
             except ConnectionException:
-                attempts += 1
                 sleep(attempts_wait_time)
                 self.log.warning("GW {}, TSC {}: Connection Lost. Retrying attempt: {}".format(
-                    self.gateway_ip, self.id, attempts))
-                sent_errors += 1
-                self.set_sent_errors(sent_errors)
+                    self.gateway_ip, self.id, self.get_iteration()))
 
             except ModbusIOException:
-                attempts += 1
                 sleep(attempts_wait_time)
                 self.log.warning("GW {}, TSC {}: Modbus IO error. Retrying attempt: {}".format(
-                    self.gateway_ip, self.id, attempts))
-                sent_errors += 1
-                self.set_sent_errors(sent_errors)
+                    self.gateway_ip, self.id, self.get_iteration()))
 
             except Exception as e:
-                attempts += 1
                 sleep(attempts_wait_time)
-                self.log.warning("GW {}, TSC {}: Unknown Error -> {}".format(
-                    self.gateway_ip, self.id, e))
-                self.set_sent_errors(sent_errors)
+                self.log.warning("GW {}, TSC {}:  Unknown Error -> {}. Retrying attempt: {}".format(
+                    self.gateway_ip, self.id, e, self.get_iteration()))
 
-        self.iteration += 1
 
-        if self.iteration > max_iterations_per_device:
-            self.log.error(
-                "GW {}, TSC {}: Too many retries. Aborting update process.".format(
-                    self.gateway_ip, self.id))
-            self.set_aborted(True)
+            if self.iteration > max_iterations_per_device:
+                self.log.error(
+                    "GW {}, TSC {}: Too many retries. Aborting update process.".format(
+                        self.gateway_ip, self.id))
+                self.set_aborted(True)
 
     def verify(self, firmware: Dict[str, str]) -> None:
         max_iterations_per_device = int(self.config["init_FW"]["max_iterations_per_device"])

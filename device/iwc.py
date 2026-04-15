@@ -18,7 +18,7 @@ class Iwc(Client):
 
     def get_register(self, register: str) -> int:
         data = self.read_register(
-            register, 4, self.id)
+            int(register), 4, self.id)
         decoder = None
         registers = data.registers
         endian_order = Endian.Big
@@ -29,6 +29,18 @@ class Iwc(Client):
             wordorder=word_endian_order)
         decoded_data = (decoder.decode_16bit_uint())
         return decoded_data
+
+    def set_register(self, register: str, value: int) -> int:
+        result = self.write_register_16bit(
+            int(register), int(value), self.id)
+        if result:
+            self.log.info(
+                f"TSC {self.get_id()}: Register {register} was successfully set to {value}.")
+            return True
+        else:
+            self.log.info(
+                f"TSC {self.get_id()}: Register {register} was not set to {value}.")
+            return False
 
     def get_firmware_version(self) -> int:
         data = self.read_register(
@@ -161,193 +173,57 @@ class Iwc(Client):
             self.log.debug(
                 "Response launch bootloader success: {}".format(result))
 
-    def upgrade_device(self, firmware: Dict[str, str]) -> None:
-
-        max_attempts = int(self.config["init_FW"]["max_attempts"])
-        max_update_attempts = int(self.config["init_FW"]["max_update_attempts"])
+    def read_write_device(self) -> None:
         attempts_wait_time = int(self.config["init_FW"]["attempts_wait_time"])
         max_iterations_per_device = int(self.config["init_FW"]["max_iterations_per_device"])
-        vcc_top_threshold = int(self.config["init_FW"]["vcc_top_threshold"])
-        vcc_bottom_threshold = int(self.config["init_FW"]["vcc_bottom_threshold"])
 
-        process_done = False
-        attempts = 0
-        update_attempts = 0
-        sent_errors = 0
-        if not self.start:
-            self.start = True
-            self.local_date = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-            self.local_date_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y - %H:%M:%S")
-        start = datetime.now()
-        while ((not process_done) and
-                attempts < max_attempts and
-                update_attempts < max_update_attempts and
-                self.iteration < max_iterations_per_device):
+        if not self.get_finished() and self.iteration < max_iterations_per_device:
             try:
                 self.connect()
-                new_version = int(firmware["version"])
-                product_id_init = self.get_firmware_product_id()
-                current_version = (product_id_init & 0xFF00) >> 8
-
-                self.set_prod_id_init(product_id_init)
-                self.set_prod_id_sent(new_version)
-                self.set_comm_status(True)
-
-                self.log.info("GW {}, IWC {}: Current version is {}, upgrading to version {}".format(
-                    self.gateway_ip, self.id,
-                    current_version, new_version))
-                if current_version != new_version:
-
-                    iwc_crc_origin = self.get_firmware_crc_origin()
-                    crc_calculated = self.get_firmware_crc_calculated()
-                    frame_array = Firmware.get_iwc_file_byte_array(firmware["path"])
-                    new_crc = Firmware.get_file_crc(frame_array)
-                    current_block = self.get_firmware_addr()
-                    max_frames = len(frame_array)
-                    if new_crc == iwc_crc_origin == crc_calculated:
-                        frame = max_frames
-                        self.log.debug("GW {}, TSC {}: crc already satisfied: {}".format(
-                            self.gateway_ip, self.id,
-                            new_crc))
-                    elif (new_crc == iwc_crc_origin and
-                        (10 < current_block < max_frames - 1)):
-                        frame = current_block - 10
-                    else:
-                        self.set_firmware_crc_origin(new_crc)
-                        frame = 0
-
-                    self.set_cs_sent(new_crc)
-
-                    current_block = self.get_firmware_addr()
-                    self.log.debug("GW {}, TSC {}: new_crc_origin: {}, current_block: {}".format(
-                        self.gateway_ip, self.id,
-                        new_crc, current_block))
-
-                    while frame < max_frames:
-                        self.send_firmware_file_frame(frame, frame_array[frame])
-                        self.log.info("GW {}, IWC {}: Address: {}/{} Reading: {}/{} = {:.2f}% Time: {}".format(  # noqa: E501
-                                    self.gateway_ip, self.id,
-                                    frame,  max_frames - 1,
-                                    frame + 1, max_frames,
-                                    frame * 100 / (max_frames - 1),
-                                    datetime.now() - start))
-
-                        self.set_percent(frame * 100 / (max_frames - 1))
-
-                        frame += 1
-                        sleep(.01)
-
-                    if frame == max_frames:
-
-                        self.set_full(True)
-                        self.set_firmware_crc_calculated(0xaa55)
-                        sleep(90)
-                        crc_calculated = self.get_firmware_crc_calculated()
-                        self.set_cs_received(crc_calculated)
-                        self.set_percent(frame * 100 / max_frames)
-                        self.log.debug("GW {}, IWC {}: crc_calculated: {}".format(
-                            self.gateway_ip, self.id,
-                            crc_calculated))
-
-                        if new_crc == crc_calculated:
-                            self.set_apto(True)
-
-                            vcc = self.check_vcc_level()
-                            aborted = False
-                            validate_attempt = 0
-                            validate = "no"
-                            if vcc >= vcc_top_threshold:
-                                validate = "yes"
-                            elif vcc >= vcc_bottom_threshold:
-                                try:
-                                    root = tk.Tk()
-                                    root.withdraw()
-                                    while vcc >= vcc_bottom_threshold and not aborted and validate_attempt < 3:
-                                        validate = messagebox.askquestion(
-                                            "{} - IWC Validation".format(datetime.now().strftime("%d/%m/%Y - %H:%M:%S")),  # noqa: E501
-                                            "GW {}, IWC {}: The VccMeasurement_mV(30028) value is over {}mV: {}mV, Do you want to continue?".format(  # noqa: E501
-                                                self.gateway_ip, self.id, vcc_bottom_threshold, vcc))
-
-                                        if validate.lower() == "yes":
-                                            validate_attempt += 1
-
-                                        elif validate.lower() == "no":
-                                            self.log.warning("GW {}, IWC {}: Upgrade process aborted".format(
-                                                self.gateway_ip, self.id))
-                                            aborted = True
-
-                                        else:
-                                            self.log.warning("GW {}, IWC {}: Wrong value: '{}' Try again.".format(
-                                                self.gateway_ip, self.id, validate))
-                                            aborted = False
-                                        vcc = self.check_vcc_level()
-                                    root.destroy()
-                                except Exception as e:
-                                    update_attempts += 1
-                                    self.log.error("GW {}, IWC {}: Failed to generate checking pop-ups".format(
-                                        self.gateway_ip, self.id))
-                            else:
-                                validate = "no"
-
-                            if validate.lower() == "yes":
-                                self.log.warning("GW {}, IWC {}: Firmware Update Flag was sent with {}mV".format(
-                                    self.gateway_ip, self.id, vcc))
-                                self.launch_flag_update_fw()
-                                self.set_bootloaded(True)
-
-                                process_done = True
-                            else:
-                                self.log.error("GW {}, IWC {}: Firmware Update Flag will not be sent with {}mV".format(
-                                    self.gateway_ip, self.id, vcc))
+                self.add_iteration()
+                read = True
+                written = True
+                for read_key, value in self.read_dict.items():
+                    if not isinstance(value, float) or pd.isna(value):
+                        self.read_dict[read_key] = self.get_register(read_key.replace("Read_", ""))
+                self.set_read(read)
+                for write_key, value in self.write_dict.items():
+                    try:
+                        if self.set_register(write_key.replace("Write_", ""), value):
+                            self.write_dict[write_key] = "OK"
                         else:
-                            update_attempts += 1
-                            self.log.warning(
-                                "GW {}, IWC {}: Update process failed. Checksum error. Retrying attempt: {}".format(
-                                    self.gateway_ip, self.id, update_attempts))
-                else:
-                    self.log.info(
-                        "GW {}, IWC {}: The firmware v{} is already installed. Finishing.".format(
-                            self.gateway_ip, self.id, current_version))
+                            written = False
+                        self.set_written(written)
+                    except Exception as e:
+                        self.log.debug(
+                            f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
+
+                if written and read:
                     self.set_finished(True)
-                    process_done = True
+                    self.log.info(
+                        "GW {}, TSC {}: The data is up to date. Finished.".format(
+                            self.gateway_ip, self.id))
 
             except ConnectionException:
-                attempts += 1
                 sleep(attempts_wait_time)
-                self.log.warning("GW {}, IWC {}: Connection Lost. Retrying attempt: {}".format(
-                    self.gateway_ip, self.id, attempts))
-                sent_errors += 1
-                self.set_sent_errors(sent_errors)
+                self.log.warning("GW {}, TSC {}: Connection Lost. Retrying attempt: {}".format(
+                    self.gateway_ip, self.id, self.get_iteration()))
 
             except ModbusIOException:
-                attempts += 1
                 sleep(attempts_wait_time)
-                self.log.warning("GW {}, IWC {}: Modbus IO error. Retrying attempt: {}".format(  # noqa: E501
-                    self.gateway_ip, self.id, attempts))
-                sent_errors += 1
-                self.set_sent_errors(sent_errors)
+                self.log.warning("GW {}, TSC {}: Modbus IO error. Retrying attempt: {}".format(
+                    self.gateway_ip, self.id, self.get_iteration()))
 
             except Exception as e:
-                attempts += 1
                 sleep(attempts_wait_time)
-                self.log.warning("GW {}, IWC {}: Unknown Error -> {}".format(
-                    self.gateway_ip, self.id, e))
-                self.set_sent_errors(sent_errors)
+                self.log.warning("GW {}, TSC {}:  Unknown Error -> {}. Retrying attempt: {}".format(
+                    self.gateway_ip, self.id, e, self.get_iteration()))
 
-        self.iteration += 1
-        self.add_duration(datetime.now() - start)
-        #self.close()
-
-        if attempts >= max_attempts or update_attempts >= max_update_attempts:
-            self.log.error(
-                "GW {}, IWC {}: Too many retries. Finishing update process.".format(
-                    self.gateway_ip, self.id))
-        if self.iteration > max_iterations_per_device:
-            self.log.error(
-                "GW {}, IWC {}: Too many retries. Aborting update process.".format(
-                    self.gateway_ip, self.id))
-            self.iteration = 0
-            self.set_aborted(True)
+            if self.iteration > max_iterations_per_device:
+                self.log.error(
+                    "GW {}, TSC {}: Too many retries. Aborting update process.".format(
+                        self.gateway_ip, self.id))
+                self.set_aborted(True)
 
     def verify(self, firmware: Dict[str, str]) -> None:
         max_iterations_per_device = int(self.config["init_FW"]["max_iterations_per_device"])

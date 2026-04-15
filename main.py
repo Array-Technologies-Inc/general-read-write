@@ -333,7 +333,7 @@ def main() -> None:
 
         time.sleep(3)
 
-        report = Reporting(site, tsc_frm_version, iwc_frm_version)
+        report = Reporting(site)
 
         for gateway in gateway_dict.values():
             report.add_gateway(gateway)

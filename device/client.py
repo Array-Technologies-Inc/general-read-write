@@ -361,8 +361,8 @@ class Client:
     def set_interation(self, iteration: int) -> None:
         self.iteration = iteration
 
-    def add_interation(self, iteration: int) -> None:
-        self.iteration += iteration
+    def add_iteration(self) -> None:
+        self.iteration += 1
 
     def set_mac(self, mac: str) -> None:
         self.mac = mac

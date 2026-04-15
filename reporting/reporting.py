@@ -9,10 +9,8 @@ from device.gateway import Gateway
 
 
 class Reporting:
-    def __init__(self, id_snc: int, tsc_version: int, iwc_version: int) -> None:
+    def __init__(self, id_snc: int) -> None:
         self.id_snc = id_snc
-        self.tsc_version = tsc_version
-        self.iwc_version = iwc_version
         self.start_time = datetime.now()
         self.end_time = None
         self.gateway_list = {}
@@ -25,6 +23,8 @@ class Reporting:
 
     def write_header(self, report_file):
         full_devices = 0
+        read_devices = 0
+        written_devices = 0
         aborted_devices = 0
         num_devices = 0
         percent_total = 0
@@ -32,6 +32,8 @@ class Reporting:
         
         for gw in self.gateway_list.values():
             full_devices += gw.get_full_tsc() + gw.get_full_iwc()
+            read_devices += gw.get_read_tsc() + gw.get_read_iwc()
+            written_devices += gw.get_written_tsc() + gw.get_written_iwc()
             aborted_devices += gw.get_aborted_tsc() + gw.get_aborted_iwc()
             num_devices += gw.get_tsc_num() + gw.get_iwc_num()
             #tengo los gws añadidos, tengo una variable que es si está la mac actualizada, lo añado como parte de la cabecera
@@ -41,7 +43,7 @@ class Reporting:
         if num_devices > 0:
             percent_total = (full_devices * 100.0) / (num_devices)
 
-        report_header = "Summary Table\t ==> FW updated {full_devices}/{total_devices} = {percent_total:6.2f} % \tAborted: {aborted_devices:3}\n\n".format(  # noqa: E501
+        report_header = "Summary Table\t ==> Read {full_devices}/{total_devices} = {percent_total:6.2f} % \tAborted: {aborted_devices:3}\n\n".format(  # noqa: E501
             full_devices=full_devices,
             total_devices=num_devices,
             percent_total=percent_total,
@@ -57,14 +59,15 @@ class Reporting:
                 gw_tsc_percent = (100 * gw.get_full_tsc()) / gw.get_tsc_num()
             if gw.get_iwc_num() != 0:
                 gw_iwc_percent = (100 * gw.get_full_iwc()) / gw.get_iwc_num()
-            report_gateway_resume = "GW {} ==> MACs updated: {}    TSC v{}: {:3}/{:3} = {:6.2f}%     IWC v{}: {:3}/{:3} = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
+            report_gateway_resume = "GW {} ==> TSC W{:3}|R{:3} -> F{:3}/T{:3} = {:6.2f}%\t IWC W{:3}|R{:3} -> F{:3}/T{:3} = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
                 gw.get_ip(),
-                gw.get_mac_file_updated(),
-                self.tsc_version,
+                gw.get_written_tsc(),
+                gw.get_read_tsc(),
                 gw.get_full_tsc(),
                 gw.get_tsc_num(),
                 gw_tsc_percent,
-                self.iwc_version,
+                gw.get_written_iwc(),
+                gw.get_read_iwc(),
                 gw.get_full_iwc(),
                 gw.get_iwc_num(),
                 gw_iwc_percent,
@@ -106,70 +109,14 @@ class Reporting:
                 for device in list(gw.get_tsc_list().values()) + list(gw.get_iwc_list().values()):
                     try:
                         for read_req, value in device.read_dict.items():
-                            device_file_table.loc[device_file_table["TCU"] == device.name, read_req] = value if value else ''
+                            if not pd.isna(value): device_file_table.loc[device_file_table["TCU"] == device.name, read_req] = value
                         for write_req, value in device.write_dict.items():
-                            device_file_table.loc[device_file_table["TCU"] == device.name, write_req] = value if value else ''
-                        '''
-                        if "ProductId Init" not in device_file_table:
-                            device_file_table["ProductId Init"] = '0'
-                        if "ProductId End" not in device_file_table:
-                            device_file_table["ProductId End"] = '0'
-                        device_file_table["ProductId Init"] = device_file_table["ProductId Init"].astype(str)
-                        device_file_table["ProductId End"] = device_file_table["ProductId End"].astype(str)
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "ProductId Init"] = device.get_prod_id_init() if device.get_prod_id_init() else '0'
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "ProductId Sent"] = device.get_prod_id_sent() if device.get_prod_id_sent() else '0'
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "ProductId End"] = device.get_prod_id_end() if device.get_prod_id_end() else '0'
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Connected"] = "Yes" if device.get_comm_status() else 'No'
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Percentage"] = device.get_percent() if device.get_percent() else 0
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Checksum sent"] = device.get_cs_sent() if device.get_cs_sent() else 0
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Checksum recv"] = device.get_cs_received() if device.get_cs_received() else 0
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Bootloader"] = "Yes" if device.get_bootloaded() else 'No'
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Ended"] = "Yes" if device.get_finished() else "No"
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Read errors"] = device.get_read_errors() if device.get_read_errors() else 0
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Send errors"] = device.get_sent_errors() if device.get_sent_errors() else 0
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "TSC local date"] = device.get_local_date() if device.get_local_date() else "---"
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "TSC UTC date"] = device.get_local_date_utc() if device.get_local_date_utc() else "---"
-                        device_file_table.loc[device_file_table["TCU"] == device.name, "Duration"] = device.get_duration() if device.get_local_date_utc() else "---"
-                        '''
+                            device_file_table[write_req] = device_file_table[write_req].astype(str)
+                            if not pd.isna(value): device_file_table.loc[device_file_table["TCU"] == device.name, write_req] = str(value)
+                        device_file_table.loc[device_file_table["TCU"] == device.name, "Attempts"] = device.get_iteration() if device.get_iteration() else 0
+
                     except Exception as e:
                         print(f"Error updating device table: {e}")
-
-                    status = "{tsc_id}\t{product_id_init}\t\t{product_id_end}\t\t{gateway}\t{comm_status}\t\t".format(  # noqa: E501
-                        tsc_id=device.get_id(),
-                        product_id_init=device.get_prod_id_init(),
-                        product_id_end=device.get_prod_id_end(),
-                        gateway=device.get_gateway_ip(),
-                        comm_status="Yes" if device.get_comm_status() else 'No'
-                    )
-
-                    progress = "{init}\t{percent_sent:.2f}%\t{full}\t".format(
-                        init="Yes" if device.get_start() else "No",
-                        percent_sent=device.get_percent(),
-                        full="Yes" if device.get_full() else "No"
-                    )
-
-                    validate = "{cs_sent}/{cs_received}\t\t{apto}\t{bootloader}\t{fin}\t".format(  # noqa: E501
-                        cs_sent=device.get_cs_sent(),
-                        cs_received=device.get_cs_received(),
-                        apto="OK" if device.get_apto() else "NOK",
-                        bootloader="Yes" if device.get_bootloaded() else "No",
-                        fin="Yes" if device.get_finished() else "---"
-                    )
-
-                    errors = "{read_errors}\t\t{sent_errors}\t\t".format(
-                        read_errors=device.get_read_errors(),
-                        sent_errors=device.get_sent_errors()
-                    )
-
-                    date = "{local_date}\t{tsc_date}\t{duration}\t".format(
-                        local_date=device.get_local_date(),
-                        tsc_date=device.get_local_date_utc(),
-                        duration=device.get_duration()
-                    )
-
-                    #report.write(
-                    #    status + progress + validate + errors + date + "\n"
-                    #)
 
         try:
             device_table_str = device_file_table.astype(str)
@@ -191,12 +138,6 @@ class Reporting:
                     except:
                         pass
 
-            #if os.path.exists(device_file):
-            #    os.remove(device_file)  # Borra el archivo si ya existe
-            #time.sleep(5)
-            # Save the excel sheet
-            # with pd.ExcelWriter(device_file, engine="openpyxl", mode="w") as writer:
-            #     device_table_str.to_excel(writer, sheet_name="Devices", index=False)
         except Exception as e:
             print(f"{device_file} cannot be written: {e}")    
         
