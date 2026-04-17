@@ -1,0 +1,11 @@
+FRIMWARE_DIR = "tests/resources"
+WORKING_DIR = "source/"
+LOG_DIR = "logs/"
+CONFIG_DIR = "config/"
+
+NUM_MAX_TSC = 220
+NUM_REGS_FRM_TSC = 32
+
+NUM_MAX_IWC = 3
+START_IWC_UNIT = 230
+NUM_REGS_FRM_IWC = 16
