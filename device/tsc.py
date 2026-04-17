@@ -33,13 +33,33 @@ class Tsc(Client):
     def set_register(self, register: str, value: int) -> int:
         result = self.write_register_16bit(
             int(register), int(value), self.id)
-        if result:
+        if result and not result.isError():
             self.log.info(
                 f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was successfully set to {value}.")
             return True
+        elif result.isError():
+            self.log.info(
+                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was NOT set to {value}: {result}")
+            return False
         else:
             self.log.info(
-                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was not set to {value}.")
+                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was NOT set to {value}.")
+            return False
+
+    def set_mask_register(self, register: str, and_mask: int, or_mask: int) -> int:
+        result = self.mask_write_register(
+            int(register), and_mask, or_mask, self.id)
+        if result and not result.isError():
+            self.log.info(
+                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was successfully set to mask {and_mask}|{or_mask}.")
+            return True
+        elif result.isError():
+            self.log.info(
+                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was NOT set to mask {and_mask}|{or_mask}: {result}")
+            return False
+        else:
+            self.log.info(
+                f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was NOT set to mask {and_mask}|{or_mask}.")
             return False
 
     def read_write_device(self) -> None:
@@ -54,21 +74,35 @@ class Tsc(Client):
                 self.add_iteration()
                 read = True
                 written = True
+                mask_written = True
+                for write_key, value in self.write_dict.items():
+                    try:
+                        if not pd.isna(value) and (isinstance(value, float) or isinstance(value, int)):
+                            if self.set_register(write_key.replace("Write_", ""), int(value)):
+                                self.write_dict[write_key] = "OK"
+                            else:
+                                written = False
+                        self.set_written(written)
+                    except Exception as e:
+                        self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
+                for mask_write_key, mask in self.mask_write_dict.items():
+                    if not pd.isna(mask) and mask != 'OK':
+                        and_mask = int(mask[:6], 16)
+                        or_mask = int(mask[7:], 16)
+                        try:
+                            if self.set_mask_register(mask_write_key.replace("Mask_", ""), and_mask, or_mask):
+                                self.mask_write_dict[mask_write_key] = "OK"
+                            else:
+                                mask_written = False
+                            self.set_mask_written(mask_written)
+                        except Exception as e:
+                            self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register mask {mask_write_key}={and_mask}|{or_mask}: {e}")
                 for read_key, value in self.read_dict.items():
                     if not isinstance(value, float) or pd.isna(value):
                         self.read_dict[read_key] = self.get_register(read_key.replace("Read_", ""))
                 self.set_read(read)
-                for write_key, value in self.write_dict.items():
-                    try:
-                        if self.set_register(write_key.replace("Write_", ""), value):
-                            self.write_dict[write_key] = "OK"
-                        else:
-                            written = False
-                        self.set_written(written)
-                    except Exception as e:
-                        self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
 
-                if written and read:
+                if written and mask_written and read:
                     self.set_finished(True)
                     self.log.info(
                         "GW {}, TSC {}: The data is up to date. Finished.".format(

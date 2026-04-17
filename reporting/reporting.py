@@ -25,6 +25,7 @@ class Reporting:
         full_devices = 0
         read_devices = 0
         written_devices = 0
+        mask_written_devices = 0
         aborted_devices = 0
         num_devices = 0
         percent_total = 0
@@ -34,6 +35,7 @@ class Reporting:
             full_devices += gw.get_full_tsc() + gw.get_full_iwc()
             read_devices += gw.get_read_tsc() + gw.get_read_iwc()
             written_devices += gw.get_written_tsc() + gw.get_written_iwc()
+            mask_written_devices += gw.get_mask_written_tsc() + gw.get_mask_written_iwc()
             aborted_devices += gw.get_aborted_tsc() + gw.get_aborted_iwc()
             num_devices += gw.get_tsc_num() + gw.get_iwc_num()
             #tengo los gws añadidos, tengo una variable que es si está la mac actualizada, lo añado como parte de la cabecera
@@ -59,14 +61,16 @@ class Reporting:
                 gw_tsc_percent = (100 * gw.get_full_tsc()) / gw.get_tsc_num()
             if gw.get_iwc_num() != 0:
                 gw_iwc_percent = (100 * gw.get_full_iwc()) / gw.get_iwc_num()
-            report_gateway_resume = "GW {} ==> TSC {:3}W|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t IWC {:3}W|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
+            report_gateway_resume = "GW {} ==> TSC {:3}W|{:3}MW|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t IWC {:3}W|{:3}MW|{:3}R -> {:3}F/{:3}T = {:6.2f}%\t Aborted: TSC={:3} IWC={:3}\n".format(  # noqa: E501
                 gw.get_ip(),
                 gw.get_written_tsc(),
+                gw.get_mask_written_tsc(),
                 gw.get_read_tsc(),
                 gw.get_full_tsc(),
                 gw.get_tsc_num(),
                 gw_tsc_percent,
                 gw.get_written_iwc(),
+                gw.get_mask_written_iwc(),
                 gw.get_read_iwc(),
                 gw.get_full_iwc(),
                 gw.get_iwc_num(),
@@ -104,11 +108,14 @@ class Reporting:
 
                 for device in list(gw.get_tsc_list().values()) + list(gw.get_iwc_list().values()):
                     try:
-                        for read_req, value in device.read_dict.items():
-                            if not pd.isna(value): device_file_table.loc[device_file_table["TCU"] == device.name, read_req] = value
                         for write_req, value in device.write_dict.items():
                             device_file_table[write_req] = device_file_table[write_req].astype(str)
                             if not pd.isna(value): device_file_table.loc[device_file_table["TCU"] == device.name, write_req] = str(value)
+                        for mask_write_req, mask in device.mask_write_dict.items():
+                            device_file_table[mask_write_req] = device_file_table[mask_write_req].astype(str)
+                            if not pd.isna(mask): device_file_table.loc[device_file_table["TCU"] == device.name, mask_write_req] = str(mask)
+                        for read_req, value in device.read_dict.items():
+                            if not pd.isna(value): device_file_table.loc[device_file_table["TCU"] == device.name, read_req] = value
                         device_file_table.loc[device_file_table["TCU"] == device.name, "Attempts"] = device.get_iteration() if device.get_iteration() else 0
 
                     except Exception as e:

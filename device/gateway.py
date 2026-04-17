@@ -34,6 +34,7 @@ class Gateway(Thread):
         self.tsc_full = 0
         self.tsc_read = 0
         self.tsc_written = 0
+        self.tsc_mask_written = 0
         self.tsc_aborted = 0
         self.tsc_list = {}
 
@@ -42,6 +43,7 @@ class Gateway(Thread):
         self.iwc_full = 0
         self.iwc_read = 0
         self.iwc_written = 0
+        self.iwc_mask_written = 0
         self.iwc_aborted = 0
         self.iwc_list = {}
         self.tsc_queue = Queue()
@@ -59,8 +61,8 @@ class Gateway(Thread):
     def get_port(self) -> None:
         return self.port
 
-    def add_tsc(self, tsc_name: str, tsc_id: int, tsc_snc: str, read_dict: dict, write_dict: dict) -> None:
-        tsc = Tsc(self.config, tsc_name, tsc_id, tsc_snc, read_dict, write_dict, self.ip, self.port)
+    def add_tsc(self, tsc_name: str, tsc_id: int, tsc_snc: str, read_dict: dict, write_dict: dict, mask_write_dict: dict) -> None:
+        tsc = Tsc(self.config, tsc_name, tsc_id, tsc_snc, read_dict, write_dict, mask_write_dict, self.ip, self.port)
         self.tsc_list[tsc_id] = tsc
         self.tsc_queue.put(tsc)
         self.tsc_num = len(self.tsc_list)
@@ -83,11 +85,14 @@ class Gateway(Thread):
     def get_written_tsc(self) -> int:
         return self.tsc_written
 
+    def get_mask_written_tsc(self) -> int:
+        return self.tsc_mask_written
+
     def get_aborted_tsc(self) -> int:
         return self.tsc_aborted
 
-    def add_iwc(self, iwc_name: str, iwc_id: int, iwc_snc: str, read_dict: dict, write_dict: dict) -> None:
-        iwc = Iwc(self.config, iwc_name, iwc_id, iwc_snc, read_dict, write_dict, self.ip, self.port)
+    def add_iwc(self, iwc_name: str, iwc_id: int, iwc_snc: str, read_dict: dict, write_dict: dict, mask_write_dict: dict) -> None:
+        iwc = Iwc(self.config, iwc_name, iwc_id, iwc_snc, read_dict, write_dict, mask_write_dict, self.ip, self.port)
         self.iwc_list[iwc_id] = iwc
         self.iwc_queue.put(iwc)
         self.iwc_num = len(self.iwc_list)
@@ -109,6 +114,9 @@ class Gateway(Thread):
 
     def get_written_iwc(self) -> int:
         return self.iwc_written
+
+    def get_mask_written_iwc(self) -> int:
+        return self.iwc_mask_written
 
     def set_full_iwc(self, full_iwc: int) -> None:
         self.iwc_full = full_iwc
@@ -186,12 +194,15 @@ class Gateway(Thread):
             self.tsc_list[tsc].client = self.client
             if self.tsc_list[tsc].get_finished():
                 self.tsc_full += 1
-                self.tsc_read += 1
                 self.tsc_written += 1
-            elif self.tsc_list[tsc].get_read():
+                self.tsc_mask_written += 1
                 self.tsc_read += 1
             elif self.tsc_list[tsc].get_written():
                 self.tsc_written += 1
+            elif self.tsc_list[tsc].get_mask_written():
+                self.tsc_mask_written += 1
+            elif self.tsc_list[tsc].get_read():
+                self.tsc_read += 1
             elif self.tsc_list[tsc].get_aborted():
                 self.tsc_aborted += 1
             else:
@@ -206,12 +217,15 @@ class Gateway(Thread):
             self.iwc_list[iwc].client = self.client
             if self.iwc_list[iwc].get_finished():
                 self.iwc_full += 1
-                self.iwc_read += 1
                 self.iwc_written += 1
-            elif self.iwc_list[iwc].get_read():
+                self.iwc_mask_written += 1
                 self.iwc_read += 1
             elif self.iwc_list[iwc].get_written():
                 self.iwc_written += 1
+            elif self.iwc_list[iwc].get_mask_written():
+                self.iwc_mask_written += 1
+            elif self.iwc_list[iwc].get_read():
+                self.iwc_read += 1
             elif self.iwc_list[iwc].get_aborted():
                 self.iwc_aborted += 1
             else:

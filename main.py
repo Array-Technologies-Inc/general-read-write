@@ -42,6 +42,7 @@ class Table():
         self.type = []
         self.read_requests = {}
         self.write_requests = {}
+        self.mask_write_requests = {}
 
 def get_app_version(version: str = "VERSION") -> str:
     return '1.0.0'
@@ -102,8 +103,11 @@ def read_config_map():
                             if "Write_" in col:
                                 device_table.write_requests[col] = devices_config[col]
                                 print(f" · Write register {col.replace("Write_", "")}")
+                            if "Mask_" in col:
+                                device_table.mask_write_requests[col] = devices_config[col]
+                                print(f" · Write with mask register {col.replace("Mask_", "")}")
 
-                        if not device_table.read_requests and not device_table.write_requests:
+                        if not device_table.read_requests and not device_table.write_requests and not device_table.mask_write_requests:
                             print(f"There is no read/write requests")
                     except Exception as e:
                         print(f"Cannot load the requests: {e}")
@@ -118,7 +122,7 @@ def read_config_map():
 
 
 
-def create_gateways(config, device_table):
+def create_gateways(config, device_table, tsc_enable: bool, iwc_enable: bool):
     for gw_ip in list(set(device_table.gw)):
         gateway_dict[gw_ip] = Gateway(
             gw_ip,
@@ -127,14 +131,17 @@ def create_gateways(config, device_table):
     for i, (name, id, gw_ip, snc, type) in enumerate(zip(device_table.name, device_table.id, device_table.gw, device_table.snc, device_table.type)):
         read_req = {}
         write_req = {}
+        mask_write_req = {}
         for reg, value in device_table.read_requests.items():
             read_req[reg] = value[i]
         for reg, value in device_table.write_requests.items():
             write_req[reg] = value[i]
-        if type == 'Controller':
-            gateway_dict[gw_ip].add_tsc(name, id, snc, read_req, write_req)
-        elif type == 'Meteo':
-            gateway_dict[gw_ip].add_iwc(name, id, snc, read_req, write_req)
+        for reg, value in device_table.mask_write_requests.items():
+            mask_write_req[reg] = value[i]
+        if type == 'Controller' and tsc_enable:
+            gateway_dict[gw_ip].add_tsc(name, id, snc, read_req, write_req, mask_write_req)
+        elif type == 'Meteo' and iwc_enable:
+            gateway_dict[gw_ip].add_iwc(name, id, snc, read_req, write_req, mask_write_req)
         else: 
             print(f"Device {name} has a non admitted type: {type}")
 
@@ -159,7 +166,7 @@ def main() -> None:
     print("Loading devices...")
     devices_config_file, devices_config_table, devices_table, site = read_config_map()
 
-    create_gateways(config, devices_table)
+    create_gateways(config, devices_table, tsc_enable, iwc_enable)
 
     sum_tsc = 0
     sum_iwc = 0

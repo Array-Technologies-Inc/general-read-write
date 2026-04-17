@@ -33,6 +33,7 @@ class Client:
         snc: str,
         read_dict: dict,
         write_dict: dict,
+        mask_write_dict: dict,
         gateway_ip: str,
         port: int,
         rtu: type = ModbusSocketFramer,
@@ -45,6 +46,7 @@ class Client:
         self.snc = snc
         self.read_dict = read_dict
         self.write_dict = write_dict
+        self.mask_write_dict = mask_write_dict
         self.gateway_ip = gateway_ip
         self.port = port
         self.client = None
@@ -54,6 +56,7 @@ class Client:
         self.error_attempt_time_ms = 10
         self.read = False
         self.written = False
+        self.mask_written = False
         self.finished = False
         self.aborted = False
         self.iteration = 0
@@ -105,6 +108,27 @@ class Client:
                 address=address, count=count, unit=unit)
             attempt = attempt + 1
         if is_invalid_response(response, count):
+            raise ModbusIOException(
+                "GW {}:{} - TSC: {}: There was a ModbusIOException.".format(
+                    self.gateway_ip,
+                    self.port,
+                    unit
+                )
+            )
+        return response
+
+    def mask_write_register(self, address: int, and_mask: int, or_mask: int, unit: int) -> str:
+        if not self.client or not self.client.is_socket_open():
+            self.connect()
+        attempt = 0
+        response = self.client.mask_write_register(
+            address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
+        while isinstance(response, ModbusIOException) and attempt < 5:
+            sleep(0.01)
+            response = self.client.write_register(
+            address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
+            attempt = attempt + 1
+        if isinstance(response, ModbusIOException):
             raise ModbusIOException(
                 "GW {}:{} - TSC: {}: There was a ModbusIOException.".format(
                     self.gateway_ip,
@@ -202,6 +226,12 @@ class Client:
 
     def set_written(self, written: bool) -> None:
         self.written = written
+
+    def get_mask_written(self) -> bool:
+        return self.mask_written
+
+    def set_mask_written(self, mask_written: bool) -> None:
+        self.mask_written = mask_written
 
     def get_finished(self) -> bool:
         return self.finished
