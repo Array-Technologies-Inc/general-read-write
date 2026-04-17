@@ -97,12 +97,12 @@ def read_config_map():
 
                     try:
                         for col in devices_config.columns:
-                            if "Read_" in col:
+                            if "Read" in col:
                                 device_table.read_requests[col] = devices_config[col]
-                                print(f" · Read register {col.replace("Read_", "")}")
-                            if "Write_" in col:
+                                print(f" · {col}")
+                            if "Write" in col:
                                 device_table.write_requests[col] = devices_config[col]
-                                print(f" · Write register {col.replace("Write_", "")}")
+                                print(f" · {col}")
                             if "Mask_" in col:
                                 device_table.mask_write_requests[col] = devices_config[col]
                                 print(f" · Write with mask register {col.replace("Mask_", "")}")

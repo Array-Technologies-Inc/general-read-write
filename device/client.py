@@ -102,7 +102,7 @@ class Client:
         attempt = 0
         response = self.client.read_holding_registers(
             address=address, count=count, unit=unit)
-        while is_invalid_response(response, count) and attempt < 5:
+        while is_invalid_response(response, count) and attempt < 3:
             sleep(0.01)
             response = self.client.read_holding_registers(
                 address=address, count=count, unit=unit)
@@ -123,7 +123,7 @@ class Client:
         attempt = 0
         response = self.client.mask_write_register(
             address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
-        while isinstance(response, ModbusIOException) and attempt < 5:
+        while isinstance(response, ModbusIOException) and attempt < 3:
             sleep(0.01)
             response = self.client.write_register(
             address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
@@ -138,19 +138,22 @@ class Client:
             )
         return response
 
-    def write_register_16bit(self, address: int, value: int, unit: int) -> str:
+    def write_register_16bit(self, address: int, value: int, unit: int, type: str) -> str:
         if not self.client or not self.client.is_socket_open():
             self.connect()
         byte_order = Endian.Big
         word_order = Endian.Little
         builder = BinaryPayloadBuilder(
             byteorder=byte_order, wordorder=word_order, repack=False)
-        builder.add_16bit_uint(int(value))
+        if type == "S16":
+            builder.add_16bit_uint(int(value))
+        else:
+            builder.add_16bit_int(int(value))
         builder = builder.to_registers()
         attempt = 0
         response = self.client.write_register(
             address=address, value=builder[0], unit=unit)
-        while isinstance(response, ModbusIOException) and attempt < 5:
+        while isinstance(response, ModbusIOException) and attempt < 3:
             sleep(0.01)
             response = self.client.write_register(
                 address=address, value=builder[0], unit=unit)
@@ -165,19 +168,19 @@ class Client:
             )
         return response
 
-    def write_register_32bit(self, address: str, value: int, unit: int) -> str:
+    def write_register_32bit(self, address: str, value: float, unit: int) -> str:
         if not self.client or not self.client.is_socket_open():
             self.connect()
         byte_order = Endian.Big
         word_order = Endian.Little
         builder = BinaryPayloadBuilder(
             byteorder=byte_order, wordorder=word_order, repack=False)
-        builder.add_32bit_uint(int(value))
+        builder.add_32bit_float(int(value))
         builder = builder.to_registers()
         attempt = 0
         response = self.client.write_registers(
             address=address, values=builder, unit=unit)
-        while isinstance(response, ModbusIOException) and attempt < 5:
+        while isinstance(response, ModbusIOException) and attempt < 3:
             sleep(0.01)
             response = self.client.write_registers(
                 address=address, values=builder, unit=unit)

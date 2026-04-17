@@ -16,23 +16,42 @@ from device import tsc_modbus_map
 
 class Tsc(Client):
 
-    def get_register(self, register: str) -> int:
+    def get_register(self, register: str, type = "U16") -> int:
         data = self.read_register(
             int(register), 4, self.id)
         decoder = None
         registers = data.registers
         endian_order = Endian.Big
         word_endian_order = Endian.Little
-        decoder = BinaryPayloadDecoder.fromRegisters(
-            registers[0:1],
-            byteorder=endian_order,
-            wordorder=word_endian_order)
-        decoded_data = (decoder.decode_16bit_uint())
+        if type =="F32":
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                registers[0:2],
+                byteorder=endian_order,
+                wordorder=word_endian_order)
+            decoded_data = (decoder.decode_32bit_float())
+        elif type =="S16":
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                registers[0:1],
+                byteorder=endian_order,
+                wordorder=word_endian_order)
+            decoded_data = (decoder.decode_16bit_int())
+        else:
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                registers[0:1],
+                byteorder=endian_order,
+                wordorder=word_endian_order)
+            decoded_data = (decoder.decode_16bit_uint())
         return decoded_data
 
-    def set_register(self, register: str, value: int) -> int:
-        result = self.write_register_16bit(
-            int(register), int(value), self.id)
+    def set_register(self, register: str, value, type = "U16") -> int:
+        if type == "F32":
+            value = float(value)
+            result = self.write_register_32bit(
+                int(register), value, self.id)
+        else:
+            value = int(value)
+            result = self.write_register_16bit(
+                int(register), value, self.id, type)
         if result and not result.isError():
             self.log.info(
                 f"GW {self.gateway_ip}, TSC {self.get_id()}: Register {register} was successfully set to {value}.")
@@ -78,7 +97,7 @@ class Tsc(Client):
                 for write_key, value in self.write_dict.items():
                     try:
                         if not pd.isna(value) and (isinstance(value, float) or isinstance(value, int)):
-                            if self.set_register(write_key.replace("Write_", ""), int(value)):
+                            if self.set_register(write_key[-5:], value, write_key[5:8]):
                                 self.write_dict[write_key] = "OK"
                             else:
                                 written = False
@@ -99,7 +118,7 @@ class Tsc(Client):
                             self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register mask {mask_write_key}={and_mask}|{or_mask}: {e}")
                 for read_key, value in self.read_dict.items():
                     if not isinstance(value, float) or pd.isna(value):
-                        self.read_dict[read_key] = self.get_register(read_key.replace("Read_", ""))
+                        self.read_dict[read_key] = self.get_register(read_key[-5:], read_key[4:7])
                 self.set_read(read)
 
                 if written and mask_written and read:
