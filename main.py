@@ -172,9 +172,7 @@ def main() -> None:
     sum_iwc = 0
     for gateway in gateway_dict.values():
         if tsc_enable: sum_tsc = sum_tsc + gateway.get_tsc_num()
-        else: print("TSCs' read/write is disabled")
         if iwc_enable: sum_iwc = sum_iwc + gateway.get_iwc_num()
-        else: print("IWCs' read/write is disabled")
 
     if sum_tsc > 0:
         print("You have selected these TSCs to read/write them:")

@@ -82,6 +82,8 @@ class Tsc(Client):
             return False
 
     def read_write_device(self) -> None:
+        # Incluyo return tras cada elemento para que no haga varias peticiones seguidas a un mismo dispositivo
+        # asi va columna a columna y no puede haber swapping por mandar dos peticiones de la misma longitud a un disp
         attempts_wait_time = int(self.config["init_RW"]["attempts_wait_time"])
         max_iterations_per_device = int(self.config["init_RW"]["max_iterations_per_device"])
 
@@ -102,8 +104,10 @@ class Tsc(Client):
                             else:
                                 written = False
                         self.set_written(written)
+                        return
                     except Exception as e:
                         self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
+                        return
                 for mask_write_key, mask in self.mask_write_dict.items():
                     if not pd.isna(mask) and mask != 'OK':
                         and_mask = int(mask[:6], 16)
@@ -114,11 +118,14 @@ class Tsc(Client):
                             else:
                                 mask_written = False
                             self.set_mask_written(mask_written)
+                            return
                         except Exception as e:
                             self.log.debug(f"GW {self.gateway_ip}, TSC {self.get_id()}: Cannot set register mask {mask_write_key}={and_mask}|{or_mask}: {e}")
+                            return
                 for read_key, value in self.read_dict.items():
                     if not isinstance(value, float) or pd.isna(value):
                         self.read_dict[read_key] = self.get_register(read_key[-5:], read_key[4:7])
+                        return
                 self.set_read(read)
 
                 if written and mask_written and read:
