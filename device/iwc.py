@@ -11,7 +11,7 @@ from common import common
 from common.init_file import InitFile
 from common.firmware import Firmware
 from device.client import Client
-from device import tsc_modbus_map
+from device import iwc_modbus_map
 
 
 class Iwc(Client):
@@ -53,15 +53,15 @@ class Iwc(Client):
             result = self.write_register_16bit(
                 int(register), value, self.id, type)
         if result and not result.isError():
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was successfully set to {value}.")
             return True
         elif result.isError():
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was NOT set to {value}: {result}")
             return False
         else:
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was NOT set to {value}.")
             return False
 
@@ -69,15 +69,15 @@ class Iwc(Client):
         result = self.mask_write_register(
             int(register), and_mask, or_mask, self.id)
         if result and not result.isError():
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was successfully set to mask {and_mask}|{or_mask}.")
             return True
         elif result.isError():
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was NOT set to mask {and_mask}|{or_mask}: {result}")
             return False
         else:
-            self.log.info(
+            self.log.debug(
                 f"GW {self.gateway_ip}, IWC {self.get_id()}: Register {register} was NOT set to mask {and_mask}|{or_mask}.")
             return False
 
@@ -87,8 +87,12 @@ class Iwc(Client):
 
         if not self.get_finished() and self.iteration < max_iterations_per_device:
             try:
-                self.log.info(
-                    f"GW {self.gateway_ip}, IWC {self.get_id()}: Starting reading & writing process")
+                if self.iteration == 0:
+                    self.log.info(
+                        f"GW {self.gateway_ip}, IWC {self.get_id()}: Starting reading & writing process")
+                else:
+                    self.log.info(
+                        f"GW {self.gateway_ip}, IWC {self.get_id()}: Continuing reading & writing process")
                 self.connect()
                 self.add_iteration()
                 read = True
@@ -98,30 +102,28 @@ class Iwc(Client):
                     try:
                         if not pd.isna(value) and (isinstance(value, float) or isinstance(value, int)):
                             if self.set_register(write_key[-5:], value, write_key[5:8]):
-                                self.write_dict[write_key] = "OK"
+                                if self.set_mask_register(iwc_modbus_map.IWC_EXTENDED_CONTROL, 0x7FFF, 0x8000):
+                                    self.write_dict[write_key] = "OK"
                             else:
                                 written = False
                         self.set_written(written)
-                        return
                     except Exception as e:
                         self.log.debug(f"GW {self.gateway_ip}, IWC {self.get_id()}: Cannot set register {write_key}={value}: {e}")
-                        return
                 for mask_write_key, mask in self.mask_write_dict.items():
                     if not pd.isna(mask) and mask != 'OK':
                         and_mask = int(mask[:6], 16)
                         or_mask = int(mask[7:], 16)
                         try:
                             if self.set_mask_register(mask_write_key.replace("Mask_", ""), and_mask, or_mask):
-                                self.mask_write_dict[mask_write_key] = "OK"
+                                if self.set_mask_register(iwc_modbus_map.IWC_EXTENDED_CONTROL, 0x7FFF, 0x8000):
+                                    self.mask_write_dict[mask_write_key] = "OK"
                             else:
                                 mask_written = False
                             self.set_mask_written(mask_written)
-                            return
                         except Exception as e:
                             self.log.debug(f"GW {self.gateway_ip}, IWC {self.get_id()}: Cannot set register mask {mask_write_key}={and_mask}|{or_mask}: {e}")
-                            return
                 for read_key, value in self.read_dict.items():
-                    if not isinstance(value, float) or pd.isna(value):
+                    if pd.isna(value) or (not isinstance(value, float) and not isinstance(value, int)):
                         self.read_dict[read_key] = self.get_register(read_key[-5:], read_key[4:7])
                         return
                 self.set_read(read)

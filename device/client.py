@@ -146,9 +146,9 @@ class Client:
         builder = BinaryPayloadBuilder(
             byteorder=byte_order, wordorder=word_order, repack=False)
         if type == "S16":
-            builder.add_16bit_uint(int(value))
-        else:
             builder.add_16bit_int(int(value))
+        else:
+            builder.add_16bit_uint(int(value))
         builder = builder.to_registers()
         attempt = 0
         response = self.client.write_register(

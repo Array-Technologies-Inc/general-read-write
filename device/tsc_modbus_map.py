@@ -6,6 +6,7 @@ AIN_Hour = 30117                     # Dir Modbus:30117;U16;R; Range:;Unit:;
 AIN_Day = 30118                      # Dir Modbus:30118;U16;R; Range:;Unit:;
 AIN_Month = 30119                    # Dir Modbus:30119;U16;R; Range:;Unit:;
 AIN_Year = 30120                     # Dir Modbus:30120;U16;R; Range:;Unit:;
+TSC_EXTENDED_CONTROL = 40007                     # Dir Modbus:30120;U16;R; Range:;Unit:;
 STI_FIRMWARE_ENABLE_CHANGE = 46256   # Dir Modbus:46256;U16;;Range:;Unit:;
 STI_FIRMWARE_NEW_VERSION = 46257     # Dir Modbus:46257;U16;;Range:;Unit:;
 STI_FIRMWARE_SIZE = 46258            # Dir Modbus:46258;U16;;Range:;Unit:;

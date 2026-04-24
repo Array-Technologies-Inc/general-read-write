@@ -192,19 +192,16 @@ class Gateway(Thread):
         self.tsc_aborted = 0
         for tsc in self.get_tsc_list():
             self.tsc_list[tsc].client = self.client
-            if self.tsc_list[tsc].get_finished():
-                self.tsc_full += 1
+            if self.tsc_list[tsc].get_written():
                 self.tsc_written += 1
+            if self.tsc_list[tsc].get_mask_written():
                 self.tsc_mask_written += 1
+            if self.tsc_list[tsc].get_read():
                 self.tsc_read += 1
-            elif self.tsc_list[tsc].get_written():
-                self.tsc_written += 1
-            elif self.tsc_list[tsc].get_mask_written():
-                self.tsc_mask_written += 1
-            elif self.tsc_list[tsc].get_read():
-                self.tsc_read += 1
-            elif self.tsc_list[tsc].get_aborted():
+            if self.tsc_list[tsc].get_aborted():
                 self.tsc_aborted += 1
+            elif self.tsc_list[tsc].get_finished():
+                self.tsc_full += 1
             else:
                 self.tsc_queue.put(self.tsc_list[tsc])
 
@@ -215,19 +212,16 @@ class Gateway(Thread):
         self.iwc_aborted = 0
         for iwc in self.get_iwc_list():
             self.iwc_list[iwc].client = self.client
-            if self.iwc_list[iwc].get_finished():
-                self.iwc_full += 1
+            if self.iwc_list[iwc].get_written():
                 self.iwc_written += 1
+            if self.iwc_list[iwc].get_mask_written():
                 self.iwc_mask_written += 1
+            if self.iwc_list[iwc].get_read():
                 self.iwc_read += 1
-            elif self.iwc_list[iwc].get_written():
-                self.iwc_written += 1
-            elif self.iwc_list[iwc].get_mask_written():
-                self.iwc_mask_written += 1
-            elif self.iwc_list[iwc].get_read():
-                self.iwc_read += 1
-            elif self.iwc_list[iwc].get_aborted():
+            if self.iwc_list[iwc].get_aborted():
                 self.iwc_aborted += 1
+            elif self.iwc_list[iwc].get_finished():
+                self.iwc_full += 1
             else:
                 self.iwc_queue.put(self.iwc_list[iwc])
 
