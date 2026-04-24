@@ -1,6 +1,7 @@
 IWC_FIRMWARE_PRODUCT_ID = 30000           # Dir Modbus:30000;U16;;Range:;Unit:;
 IWC_FIRMWARE_VPOW_MEASUREMENT_MV = 30027  # Dir Modbus:30027;U16;;Range:;Unit:;
 IWC_FIRMWARE_VCC_MEASUREMENT_MV = 30028   # Dir Modbus:30028:U16::Range:;Unit:;
+IWC_EXTENDED_CONTROL = 40007   # Dir Modbus:30028:U16::Range:;Unit:;
 IWC_FIRMWARE_BLOCK_POSITION = 51000       # Dir Modbus:51000;U16;;Range:;Unit:;
 IWC_FIRMWARE_TWO_BYTE_BIN_1 = 51001       # Dir Modbus:51001;U16;;Range:;Unit:;
 IWC_FIRMWARE_TWO_BYTE_BIN_2 = 51002       # Dir Modbus:51002;U16;;Range:;Unit:;
