@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='reader_writer',
+    name='reader_writer_v1.0.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
