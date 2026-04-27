@@ -152,8 +152,8 @@ class Tsc(Client):
                     self.gateway_ip, self.id, e, self.get_iteration()))
 
 
-            if self.iteration > max_iterations_per_device:
-                self.log.error(
-                    "GW {}, TSC {}: Too many retries. Aborting update process.".format(
-                        self.gateway_ip, self.id))
-                self.set_aborted(True)
+        if self.iteration >= max_iterations_per_device:
+            self.log.error(
+                "GW {}, TSC {}: Too many retries. Aborting update process.".format(
+                    self.gateway_ip, self.id))
+            self.set_aborted(True)
