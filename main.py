@@ -123,6 +123,9 @@ def read_config_map():
 
 
 def create_gateways(config, device_table, tsc_enable: bool, iwc_enable: bool):
+
+    print("Preparing connections, this may take few seconds...")
+
     for gw_ip in list(set(device_table.gw)):
         gateway_dict[gw_ip] = Gateway(
             gw_ip,
