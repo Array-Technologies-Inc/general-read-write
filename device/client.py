@@ -108,13 +108,7 @@ class Client:
                 address=address, count=count, unit=unit)
             attempt = attempt + 1
         if is_invalid_response(response, count):
-            raise ModbusIOException(
-                "GW {}:{} - TSC: {}: There was a ModbusIOException.".format(
-                    self.gateway_ip,
-                    self.port,
-                    unit
-                )
-            )
+            raise ModbusIOException()
         return response
 
     def mask_write_register(self, address: int, and_mask: int, or_mask: int, unit: int) -> str:
@@ -125,17 +119,11 @@ class Client:
             address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
         while isinstance(response, ModbusIOException) and attempt < 3:
             sleep(0.01)
-            response = self.client.write_register(
+            response = self.client.mask_write_register(
             address=address, and_mask=and_mask, or_mask=or_mask, unit=unit)
             attempt = attempt + 1
         if isinstance(response, ModbusIOException):
-            raise ModbusIOException(
-                "GW {}:{} - TSC: {}: There was a ModbusIOException.".format(
-                    self.gateway_ip,
-                    self.port,
-                    unit
-                )
-            )
+            raise ModbusIOException()
         return response
 
     def write_register_16bit(self, address: int, value: int, unit: int, type: str) -> str:
@@ -159,13 +147,7 @@ class Client:
                 address=address, value=builder[0], unit=unit)
             attempt = attempt + 1
         if isinstance(response, ModbusIOException):
-            raise ModbusIOException(
-                "GW {}:{} - TSC: {}: There was a ModbusIOException.".format(
-                    self.gateway_ip,
-                    self.port,
-                    unit
-                )
-            )
+            raise ModbusIOException()
         return response
 
     def write_register_32bit(self, address: str, value: float, unit: int) -> str:
@@ -187,13 +169,7 @@ class Client:
             attempt = attempt + 1
         if isinstance(response, ModbusIOException):
             message = "GW {}:{} - TSC: {}: There was a ModbusIOException"
-            raise ModbusIOException(
-                message.format(
-                    self.gateway_ip,
-                    self.port,
-                    unit
-                )
-            )
+            raise ModbusIOException()
         return response
 
     def close(self) -> None:
