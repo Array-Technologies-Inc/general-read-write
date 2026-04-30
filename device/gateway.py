@@ -51,7 +51,6 @@ class Gateway(Thread):
 
         self.threads = []
         self.threads_per_gateway = int(config["init_RW"]["threads_per_gateway"])
-        self.mac_file_updated = False
 
         self.process_finished = False
 
@@ -183,7 +182,7 @@ class Gateway(Thread):
 
         if not ((self.tsc_aborted + self.tsc_full < self.get_tsc_num()) or (self.iwc_aborted + self.iwc_full < self.get_iwc_num())):
             self.process_finished = True
-            log.error(f"GW {self.ip}, No device pending update. \tIWC F|A|T {self.iwc_full}|{self.iwc_aborted}|{self.get_iwc_num()} \tTSC F|A|T  {self.tsc_full}|{self.tsc_aborted}|{self.get_tsc_num()}")
+            log.error(f"GW {self.ip}, No device pending. \tIWC F|A|T {self.iwc_full}|{self.iwc_aborted}|{self.get_iwc_num()} \tTSC F|A|T  {self.tsc_full}|{self.tsc_aborted}|{self.get_tsc_num()}")
 
     def verify_tsc(self):
         self.tsc_full = 0
@@ -258,7 +257,7 @@ class Gateway(Thread):
 
             sleep(10)
 
-        log.error(f"GW {self.ip} Updating process is finished")
+        log.error(f"GW {self.ip} RW process is finished")
 
 
 
