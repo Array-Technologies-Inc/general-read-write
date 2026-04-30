@@ -154,8 +154,7 @@ def main() -> None:
 
     app_version = get_app_version()
 
-    print("You are using the ReaderWriter version {}".format(app_version))
-    print("Running update as principal.\n")
+    print("You are using the ReaderWriter version {}\n".format(app_version))
 
     init_config = InitFile()
     print("Loading configuration file...")
