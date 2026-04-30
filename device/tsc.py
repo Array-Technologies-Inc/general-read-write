@@ -94,7 +94,7 @@ class Tsc(Client):
                         f"GW {self.gateway_ip}, TSC {self.get_id()}: Starting reading & writing process")
                 else:
                     self.log.info(
-                        f"GW {self.gateway_ip}, TSC {self.get_id()}: Continuing reading & writing process")
+                        f"GW {self.gateway_ip}, TSC {self.get_id()}: Continuing reading & writing process, iteration: {self.iteration}")
                 self.connect()
                 self.add_iteration()
                 read = True
